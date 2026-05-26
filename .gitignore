@@ -1,0 +1,28 @@
+# Production fixture — real document, keep local only
+tests/Buddhismen LL 250905.html
+
+# Local-only docs
+CLAUDE.md
+PRD.md
+CHANGELOG.md
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python local server artefacts
+__pycache__/
+*.pyc

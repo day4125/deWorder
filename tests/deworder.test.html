@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>deworder-js tests</title>
+  <style>
+    body {
+      color: #111;
+      font: 16px/1.5 system-ui, sans-serif;
+      margin: 2rem;
+      max-width: 52rem;
+    }
+
+    pre {
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      padding: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .pass {
+      color: #166534;
+    }
+
+    .fail {
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <h1>deworder-js tests</h1>
+  <pre id="results">Running...</pre>
+
+  <script src="../static/defaults.js"></script>
+  <script src="../static/deworder.js"></script>
+  <script>
+    const { clean, decodeHtmlBytes, detectClasses } = window.Deworder;
+
+    const fixture = `<!doctype html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="windows-1252">
+<style>.MsoNormal { mso-style-name: Normal; }</style>
+</head>
+<body>
+<!--[if gte mso 9]><xml><w:WordDocument></w:WordDocument></xml><![endif]-->
+<div class="WordSection1">
+<p class="NoKRubrik1" style="mso-margin-top-alt:auto">Islam</p>
+<p class="NoKRubrik2">Historik</p>
+<p class="NoKRubrik3">Begrepp</p>
+<p class="NoKText">Vanlig text med <span class="NoKBetoningKursiv">betoning</span>.</p>
+<p class="NoKPunktlista">Första punkten</p>
+<p class="NoKPunktlista">Andra punkten</p>
+<p class="MsoNormal"><span class="SpellE">stavning</span><o:p></o:p></p>
+</div>
+</body>
+</html>
+`;
+
+    const tests = [];
+    const expectedFixtureOutput = `<h1>Islam</h1>
+<h2>Historik</h2>
+<h3>Begrepp</h3>
+<p>Vanlig text med <em>betoning</em>.</p>
+<ul><li>Första punkten</li><li>Andra punkten</li></ul>
+<p>stavning</p>
+`;
+
+    test("detectClasses matches the Python verifier fixture", () => {
+      assertDeepEqual(detectClasses(fixture), [
+        { tag_name: "p", class_name: "MsoNormal", count: 1 },
+        { tag_name: "p", class_name: "NoKPunktlista", count: 2 },
+        { tag_name: "p", class_name: "NoKRubrik1", count: 1 },
+        { tag_name: "p", class_name: "NoKRubrik2", count: 1 },
+        { tag_name: "p", class_name: "NoKRubrik3", count: 1 },
+        { tag_name: "p", class_name: "NoKText", count: 1 },
+        { tag_name: "span", class_name: "NoKBetoningKursiv", count: 1 },
+      ]);
+    });
+
+    test("detectClasses normalizes CxSp Word class suffixes", () => {
+      assertDeepEqual(detectClasses(`
+        <p class="NoKTextCxSpFirst">A</p>
+        <p class="NoKTextCxSpMiddle">B</p>
+        <p class="NoKTextCxSpLast">C</p>
+      `), [
+        { tag_name: "p", class_name: "NoKText", count: 3 },
+      ]);
+    });
+
+    test("detectClasses removes Word comment elements before counting", () => {
+      assertDeepEqual(detectClasses(`
+        <p class="NoKText">Keep</p>
+        <p class="MsoCommentText">Drop by class</p>
+        <p class="NoKIngress" style="mso-element:comment">Drop by style</p>
+      `), [
+        { tag_name: "p", class_name: "NoKText", count: 1 },
+      ]);
+    });
+
+    test("decodeHtmlBytes honors windows-1252 meta charsets", () => {
+      const bytes = windows1252Bytes("<meta charset=\"windows-1252\"><p>r", [0xE4], "ksm", [0xF6], "rg", [0xE5], "s ", [0x80], "</p>");
+      assertEqual(decodeHtmlBytes(bytes.buffer), "<meta charset=\"windows-1252\"><p>räksmörgås €</p>");
+    });
+
+    test("decodeHtmlBytes falls back to utf-8 for unsupported labels", () => {
+      const bytes = new TextEncoder().encode("<meta charset=\"made-up\"><p>åäö</p>");
+      assertEqual(decodeHtmlBytes(bytes.buffer), "<meta charset=\"made-up\"><p>åäö</p>");
+    });
+
+    test("clean converts the verifier fixture into useful semantic body HTML", () => {
+      const cleaned = clean(fixture);
+
+      assertEqual(cleaned, expectedFixtureOutput);
+
+      for (const needle of [
+        "MsoNormal",
+        "class=",
+        "<o:",
+        "<w:",
+        "<style",
+        "<meta",
+        "mso-",
+        "SpellE",
+        "WordSection1",
+        "<!--",
+      ]) {
+        assertNotIncludes(cleaned, needle);
+      }
+    });
+
+    test("clean matches the checked-in Python output for the verifier fixture", async () => {
+      const [raw, expected] = await Promise.all([
+        fetch("./fixtures/verify-fixture.html").then((response) => response.text()),
+        fetch("./fixtures/verify-fixture.cleaned.html").then((response) => response.text()),
+      ]);
+
+      assertEqual(clean(raw), expected);
+    });
+
+    test("clean applies strip and keep mappings", () => {
+      const cleaned = clean(`
+        <p class="NoKText">Keep text</p>
+        <p class="NoKRubrik1">Drop heading</p>
+        <span class="NoKBetoningKursiv">Keep class</span>
+      `, {
+        mapping: {
+          NoKRubrik1: "strip",
+          NoKBetoningKursiv: "keep",
+        },
+        strip_all_classes: false,
+      });
+
+      assertIncludes(cleaned, "<p>Keep text</p>");
+      assertIncludes(cleaned, "<span class=\"NoKBetoningKursiv\">Keep class</span>");
+      assertNotIncludes(cleaned, "Drop heading");
+    });
+
+    test("clean maps normalized CxSp class variants", () => {
+      assertEqual(clean(`<p class="NoKTextCxSpFirst">A</p>`), "<p>A</p>\n");
+    });
+
+    test("clean preserves visible http links before unwrapping anchors", () => {
+      assertEqual(clean(`<p class="NoKText">Go to <a href="https://example.com/page">example</a>.</p>`), "<p>Go to example (https://example.com/page).</p>\n");
+      assertEqual(clean(`<p class="NoKText"><a href="https://example.com">https://example.com</a></p>`), "<p>https://example.com</p>\n");
+    });
+
+    test("clean removes unsafe tags and noisy attributes", () => {
+      const cleaned = clean(`
+        <p class="NoKText" style="mso-style-name:normal" onclick="alert(1)">Safe</p>
+        <script>alert(1)</script>
+        <form><input value="x"></form>
+        <img src="x" onerror="alert(1)">
+      `);
+
+      assertEqual(cleaned, "<p>Safe</p>\n");
+    });
+
+    test("clean wraps separate list item runs without swallowing surrounding blocks", () => {
+      const cleaned = clean(`
+        <p class="NoKPunktlista">A</p>
+        <p class="NoKPunktlista">B</p>
+        <p class="NoKText">Break</p>
+        <p class="NoKPunktlista">C</p>
+      `);
+
+      assertEqual(cleaned, "<ul><li>A</li><li>B</li></ul>\n<p>Break</p>\n<ul><li>C</li></ul>\n");
+    });
+
+    test("clean wraps ol-mapped items in <ol> and ul-mapped items in <ul>, splitting on type change", () => {
+      assertEqual(
+        clean(`
+          <p class="NumList">First</p>
+          <p class="NumList">Second</p>
+          <p class="NoKPunktlista">Bullet</p>
+        `, { mapping: { NumList: "ol" } }),
+        "<ol><li>First</li><li>Second</li></ol>\n<ul><li>Bullet</li></ul>\n",
+      );
+      assertEqual(
+        clean(`
+          <p class="NumList">A</p>
+          <p class="NoKPunktlista">B</p>
+          <p class="NumList">C</p>
+        `, { mapping: { NumList: "ol" } }),
+        "<ol><li>A</li></ol>\n<ul><li>B</li></ul>\n<ol><li>C</li></ol>\n",
+      );
+    });
+
+    test("clean collapses nested emphasis and prunes empty elements", () => {
+      const cleaned = clean(`
+        <p class="NoKText">A <b><b>B</b></b> <i><i>C</i></i><span></span></p>
+        <p class="NoKText">&nbsp;</p>
+      `);
+
+      assertEqual(cleaned, "<p>A <strong>B</strong> <em>C</em></p>\n");
+    });
+
+    test("clean removes elements with mso-element:comment style", () => {
+      const cleaned = clean(`
+        <p class="NoKText">Keep</p>
+        <p class="NoKText" style="mso-element:comment">Drop</p>
+      `);
+      assertIncludes(cleaned, "<p>Keep</p>");
+      assertNotIncludes(cleaned, "Drop");
+    });
+
+    test("clean converts <b> and <i> inside a class-mapped heading", () => {
+      assertEqual(
+        clean(`<p class="NoKRubrik2">Intro <b>bold</b> and <i>italic</i></p>`),
+        "<h2>Intro <strong>bold</strong> and <em>italic</em></h2>\n",
+      );
+    });
+
+    test("clean uses first matching class when multiple mapped classes appear", () => {
+      // NoKRubrik2 sorts before NoKText alphabetically (R < T), so if the
+      // lookup were alphabetical NoKRubrik2 (h2) would always win.
+      // These two cases prove it is attribute-order-dependent instead.
+      assertEqual(clean(`<p class="NoKText NoKRubrik2">text</p>`), "<p>text</p>\n");
+      assertEqual(clean(`<p class="NoKRubrik2 NoKText">text</p>`), "<h2>text</h2>\n");
+    });
+
+    run();
+
+    function test(name, fn) {
+      tests.push({ name, fn });
+    }
+
+    async function run() {
+      const lines = [];
+      let failures = 0;
+
+      for (const { name, fn } of tests) {
+        try {
+          await fn();
+          lines.push(`PASS ${name}`);
+        } catch (error) {
+          failures += 1;
+          lines.push(`FAIL ${name}\n${error.stack || error.message}`);
+        }
+      }
+
+      document.body.className = failures ? "fail" : "pass";
+      document.querySelector("#results").textContent = lines.join("\n\n");
+      document.title = failures ? `${failures} failing deworder-js test(s)` : "deworder-js tests passed";
+    }
+
+    function windows1252Bytes(...parts) {
+      const bytes = [];
+      for (const part of parts) {
+        if (typeof part === "string") {
+          bytes.push(...[...part].map((char) => char.charCodeAt(0)));
+        } else {
+          bytes.push(...part);
+        }
+      }
+      return new Uint8Array(bytes);
+    }
+
+    function assertEqual(actual, expected) {
+      if (actual !== expected) {
+        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+      }
+    }
+
+    function assertIncludes(actual, needle) {
+      if (!actual.includes(needle)) {
+        throw new Error(`Expected ${JSON.stringify(actual)} to include ${JSON.stringify(needle)}`);
+      }
+    }
+
+    function assertNotIncludes(actual, needle) {
+      if (actual.includes(needle)) {
+        throw new Error(`Expected ${JSON.stringify(actual)} not to include ${JSON.stringify(needle)}`);
+      }
+    }
+
+    function assertDeepEqual(actual, expected) {
+      assertEqual(JSON.stringify(actual, null, 2), JSON.stringify(expected, null, 2));
+    }
+  </script>
+</body>
+</html>

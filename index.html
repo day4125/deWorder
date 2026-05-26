@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>html-deworder</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>html-deworder<span class="cursor"></span></h1>
+    <p class="tagline">Gör Word-exporterade .html-filer redo för CMS-import</p>
+  </header>
+
+  <main>
+    <ol class="steps" aria-label="steg">
+      <li class="active" data-step-indicator="1" role="button" tabindex="0"><span class="dot"></span>ladda upp</li>
+      <li data-step-indicator="2" role="button" tabindex="0"><span class="dot"></span>mappa</li>
+      <li data-step-indicator="3" role="button" tabindex="0"><span class="dot"></span>förhandsgranska</li>
+    </ol>
+
+    <section class="section" data-step="1">
+      <h2><span class="num">1</span>ladda upp HTML-fil</h2>
+      <p>Välj <code>.html</code>-fil som exporterats från Word, eller klistra in HTML-källkod.</p>
+
+      <div class="input-mode" role="tablist" aria-label="inmatningssätt">
+        <button type="button" class="secondary active" data-input-mode="file">fil</button>
+        <button type="button" class="secondary" data-input-mode="paste">klistra in</button>
+      </div>
+
+      <div data-input-panel="file">
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" accept=".html,.htm,text/html" id="file-input">
+          <div class="drop-label" id="drop-label">
+            <span class="drop-icon">&#8679;</span>
+            <span>dra &amp; släpp eller <span class="drop-browse">klicka för att bläddra</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div data-input-panel="paste" hidden>
+        <textarea id="paste-input" class="paste-input" spellcheck="false" placeholder="Klistra in HTML-kod här..."></textarea>
+      </div>
+
+      <div class="row">
+        <button type="button" id="continue-btn" disabled>fortsätt &rarr;</button>
+      </div>
+    </section>
+
+    <section class="section" data-step="2" hidden>
+      <h2><span class="num">2</span>mappa klasser till taggar</h2>
+      <p class="meta" id="mapping-meta"></p>
+      <div class="row">
+        <button type="button" id="preview-btn">förhandsgranska &rarr;</button>
+        <button type="button" id="new-file-btn" class="link back">ladda upp annan fil</button>
+        <button type="button" id="reset-btn" class="reset">återställ standardvärden</button>
+      </div>
+      <div id="mapping-table-root"></div>
+      <label class="checkbox">
+        <input type="checkbox" id="strip-all-classes" checked>
+        ta bort alla återstående class-attribut från utdata
+      </label>
+    </section>
+
+    <section class="section" data-step="3" hidden>
+      <h2><span class="num">3</span>förhandsgranska &amp; ladda ned</h2>
+      <p class="meta" id="preview-meta"></p>
+      <div class="row">
+        <button type="button" id="download-btn">ladda ned rensad HTML-fil</button>
+        <button type="button" id="adjust-btn" class="link back">justera mappning</button>
+        <button type="button" id="another-file-btn" class="link back">ladda upp annan fil</button>
+      </div>
+    </section>
+
+    <section class="section" data-preview-section hidden>
+      <h2><span class="num">3<sup>1</sup></span>renderad jämförelse</h2>
+      <div class="preview">
+        <div class="pane">
+          <h3>före&thinsp;<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+  <path fill-rule="evenodd" d="M16.5 3.75a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-6a1.5 1.5 0 0 1-1.5-1.5V15a.75.75 0 0 0-1.5 0v3.75a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5.25a3 3 0 0 0-3-3h-6a3 3 0 0 0-3 3V9A.75.75 0 1 0 9 9V5.25a1.5 1.5 0 0 1 1.5-1.5h6Zm-5.03 4.72a.75.75 0 0 0 0 1.06l1.72 1.72H2.25a.75.75 0 0 0 0 1.5h10.94l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 0 0-1.06 0Z" clip-rule="evenodd" />
+</svg>
+</h3> 
+          <iframe id="iframe-before" sandbox="allow-same-origin"></iframe>
+        </div>
+        <div class="pane">
+          <h3>efter&thinsp;<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+  <path fill-rule="evenodd" d="M7.5 3.75A1.5 1.5 0 0 0 6 5.25v13.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5V15a.75.75 0 0 1 1.5 0v3.75a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3V5.25a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3V9A.75.75 0 0 1 15 9V5.25a1.5 1.5 0 0 0-1.5-1.5h-6Zm10.72 4.72a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1 0 1.06l-3 3a.75.75 0 1 1-1.06-1.06l1.72-1.72H9a.75.75 0 0 1 0-1.5h10.94l-1.72-1.72a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+</svg>
+</h3>
+          <iframe id="iframe-after" sandbox="allow-same-origin"></iframe>
+        </div>
+      </div>
+      <div class="heading-nav">
+        <button type="button" class="heading-nav-btn secondary" id="prev-heading-btn">&uarr; föregående rubrik</button>
+        <button type="button" class="heading-nav-btn secondary" id="next-heading-btn">nästa rubrik &darr;</button>
+      </div>
+    </section>
+
+    <section class="section" data-source-section hidden>
+      <div class="source-header">
+        <h2><span class="num">3<sup>2</sup></span>rensad HTML</h2>
+      </div>
+      <div class="source-wrap">
+        <button type="button" class="copy-btn secondary" id="copy-btn">kopiera</button>
+        <pre class="source" id="source-pre"></pre>
+      </div>
+    </section>
+  </main>
+
+  <script src="static/defaults.js"></script>
+  <script src="static/deworder.js"></script>
+  <script src="static/app.js"></script>
+</body>
+</html>

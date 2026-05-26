@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>production smoke</title>
+  <style>
+    body {
+      color: #111;
+      font: 16px/1.5 system-ui, sans-serif;
+      margin: 2rem;
+      max-width: 52rem;
+    }
+
+    label {
+      display: inline-block;
+      margin-bottom: 1rem;
+    }
+
+    pre {
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      padding: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .pass { color: #166534; }
+    .fail { color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h1>production smoke</h1>
+  <p>Load any Word-exported <code>.html</code> file to run the cleaner and check for forbidden artifacts.</p>
+  <label>
+    pick file: <input type="file" id="file-input" accept=".html,.htm,text/html">
+  </label>
+  <pre id="results">No file loaded yet.</pre>
+
+  <script src="../static/defaults.js"></script>
+  <script src="../static/deworder.js"></script>
+  <script>
+    const { clean, decodeHtmlBytes, detectClasses } = window.Deworder;
+
+    const forbidden = [
+      "<script",
+      "<img",
+      "<style",
+      "<meta",
+      "mso-",
+      "MsoComment",
+      "msocom",
+      "onclick",
+      "<o:",
+      "<w:",
+      "<!--",
+    ];
+
+    document.querySelector("#file-input").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) run(file);
+    });
+
+    async function run(file) {
+      const results = document.querySelector("#results");
+      results.textContent = "Running...";
+      document.body.className = "";
+
+      try {
+        const fixtureBytes = await file.arrayBuffer();
+        const raw = decodeHtmlBytes(fixtureBytes);
+        const rows = detectClasses(raw);
+        const cleaned = clean(raw);
+        const hits = forbidden.filter((needle) => cleaned.toLowerCase().includes(needle.toLowerCase()));
+
+        if (hits.length) {
+          throw new Error(`Forbidden output remains: ${hits.join(", ")}`);
+        }
+
+        document.body.className = "pass";
+        document.title = "production smoke passed";
+        results.textContent = [
+          `PASS ${file.name} cleans without forbidden Word/browser artifacts`,
+          `raw: ${raw.length} chars`,
+          `cleaned: ${cleaned.length} chars`,
+          `class rows: ${rows.length}`,
+          `h1: ${(cleaned.match(/<h1/g) || []).length}`,
+          `h2: ${(cleaned.match(/<h2/g) || []).length}`,
+          "",
+          cleaned.slice(0, 500),
+        ].join("\n");
+      } catch (error) {
+        document.body.className = "fail";
+        document.title = "production smoke failed";
+        results.textContent = `FAIL ${file.name}\n${error.stack || error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>

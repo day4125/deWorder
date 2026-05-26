@@ -1,0 +1,377 @@
+(() => {
+const {
+  AUTO_STRIP_CLASSES,
+  DEFAULT_MAPPING,
+  DISALLOWED_TAGS,
+  STRIPPED_ATTRS,
+} = window.DeworderDefaults;
+
+const META_CHARSET_RE = /<meta[^>]+?charset\s*=\s*["']?([\w:.-]+)/i;
+const CXSP_SUFFIX_RE = /CxSp(?:First|Middle|Last)$/;
+const MSO_COMMENT_RE = /<!--\[if[^>]*?\]>[\s\S]*?<!\[endif\]-->/gi;
+const DOWNLEVEL_REVEALED_RE = /<!\[if[^>]*?\]>[\s\S]*?<!\[endif\]>/gi;
+const PLAIN_COMMENT_RE = /<!--[\s\S]*?-->/g;
+const PI_RE = /<\?[^>]*\?>/g;
+const BLOCK_TAGS = new Set(["p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6"]);
+const IGNORED_INLINE_CLASSES = new Set(["SpellE", "GramE"]);
+const EMPTY_INLINE_TAGS = new Set(["strong", "em"]);
+const EMPTY_BLOCK_TAGS = new Set(["p", "blockquote", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6"]);
+
+function decodeHtmlBytes(arrayBuffer) {
+  const bytes = arrayBuffer instanceof Uint8Array ? arrayBuffer : new Uint8Array(arrayBuffer);
+  const declared = detectDeclaredCharset(bytes);
+  return decodeBytes(bytes, declared || "utf-8");
+}
+
+function detectClasses(htmlString) {
+  const doc = parseHtml(stripWordNoise(htmlString));
+  const body = doc.body || doc.documentElement;
+
+  for (const element of allElements(body)) {
+    if ((element.getAttribute("style") || "").includes("mso-element:comment")) {
+      element.remove();
+    }
+  }
+
+  for (const element of allElements(body)) {
+    if (classList(element).some((className) => AUTO_STRIP_CLASSES.has(className))) {
+      element.remove();
+    }
+  }
+
+  const seen = new Map();
+  for (const element of allElements(body)) {
+    const tagName = element.localName;
+    if (tagName === "div") {
+      continue;
+    }
+
+    for (const className of classList(element)) {
+      if (IGNORED_INLINE_CLASSES.has(className)) {
+        continue;
+      }
+      const normalized = normalizeClass(className);
+      const key = `${tagName}\u0000${normalized}`;
+      const current = seen.get(key) || { tag_name: tagName, class_name: normalized, count: 0 };
+      current.count += 1;
+      seen.set(key, current);
+    }
+  }
+
+  return [...seen.values()].sort((a, b) => {
+    const blockDiff = Number(!BLOCK_TAGS.has(a.tag_name)) - Number(!BLOCK_TAGS.has(b.tag_name));
+    if (blockDiff) {
+      return blockDiff;
+    }
+    return compareStrings(a.tag_name, b.tag_name) || compareStrings(a.class_name, b.class_name);
+  });
+}
+
+function clean(htmlString, config = {}) {
+  const cfg = mergeConfig(config);
+  const mapping = cfg.mapping;
+  const doc = parseHtml(stripWordNoise(htmlString));
+  const body = doc.body || doc.documentElement;
+
+  for (const element of allElements(body)) {
+    if (element.localName.includes(":")) {
+      element.remove();
+    }
+  }
+
+  for (const element of allElements(body)) {
+    if (DISALLOWED_TAGS.has(element.localName)) {
+      element.remove();
+    }
+  }
+
+  for (const span of elementsByTag(body, "span")) {
+    if (classList(span).some((className) => IGNORED_INLINE_CLASSES.has(className))) {
+      unwrapElement(span);
+    }
+  }
+
+  for (const element of allElements(body)) {
+    if (classList(element).some((className) => AUTO_STRIP_CLASSES.has(className))) {
+      element.remove();
+    }
+  }
+
+  for (const element of allElements(body).filter((node) => ["p", "span"].includes(node.localName))) {
+    const target = mappedTarget(element, mapping);
+    if (!target || target === "keep") {
+      continue;
+    }
+    if (target === "strip") {
+      element.remove();
+      continue;
+    }
+    const effectiveTag = target === "ol" ? "li" : target;
+    const replacement = replaceElementTag(doc, element, effectiveTag);
+    replacement.removeAttribute("class");
+    if (target === "ol") {
+      replacement.setAttribute("data-deworder-ol", "");
+    }
+  }
+
+  for (const element of allElements(body)) {
+    if ((element.getAttribute("style") || "").includes("mso-element:comment")) {
+      element.remove();
+    }
+  }
+
+  for (const div of elementsByTag(body, "div")) {
+    unwrapElement(div);
+  }
+
+  wrapConsecutiveListItems(doc, body);
+
+  for (const element of allElements(body).filter((node) => ["b", "i", "font", "u"].includes(node.localName))) {
+    if (element.localName === "b") {
+      replaceElementTag(doc, element, "strong");
+    } else if (element.localName === "i") {
+      replaceElementTag(doc, element, "em");
+    } else {
+      unwrapElement(element);
+    }
+  }
+
+  for (const link of elementsByTag(body, "a")) {
+    const href = (link.getAttribute("href") || "").trim();
+    const text = (link.textContent || "").trim();
+    if (href && /^https?:\/\//i.test(href) && href !== text) {
+      link.append(doc.createTextNode(` (${href})`));
+    }
+    unwrapElement(link);
+  }
+
+  for (const br of elementsByTag(body, "br")) {
+    br.remove();
+  }
+
+  for (const element of allElements(body)) {
+    for (const attr of Array.from(element.attributes)) {
+      if (shouldStripAttr(attr.name)) {
+        element.removeAttribute(attr.name);
+      }
+    }
+  }
+
+  if (cfg.strip_all_classes) {
+    for (const element of allElements(body)) {
+      element.removeAttribute("class");
+    }
+  }
+
+  for (const span of elementsByTag(body, "span")) {
+    if (!span.attributes.length) {
+      unwrapElement(span);
+    }
+  }
+
+  collapseNested(body, "strong");
+  collapseNested(body, "em");
+  removeEmptyElements(body, EMPTY_INLINE_TAGS);
+  removeEmptyElements(body, EMPTY_BLOCK_TAGS);
+
+  return serializeBodyFragment(body);
+}
+
+function mergeConfig(config = {}) {
+  return {
+    mapping: {
+      ...DEFAULT_MAPPING,
+      ...(config.mapping || {}),
+    },
+    strip_all_classes: config.strip_all_classes !== false,
+  };
+}
+
+function detectDeclaredCharset(bytes) {
+  const head = String.fromCharCode(...bytes.slice(0, 4096));
+  const match = META_CHARSET_RE.exec(head);
+  return match ? match[1].trim().toLowerCase() : "";
+}
+
+function decodeBytes(bytes, encoding) {
+  try {
+    return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+  } catch {
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  }
+}
+
+function stripWordNoise(htmlString) {
+  return String(htmlString)
+    .replace(MSO_COMMENT_RE, "")
+    .replace(DOWNLEVEL_REVEALED_RE, "")
+    .replace(PLAIN_COMMENT_RE, "")
+    .replace(PI_RE, "");
+}
+
+function parseHtml(htmlString) {
+  return new DOMParser().parseFromString(htmlString, "text/html");
+}
+
+function allElements(root) {
+  return Array.from(root.querySelectorAll("*"));
+}
+
+function elementsByTag(root, tagName) {
+  return Array.from(root.getElementsByTagName(tagName));
+}
+
+function classList(element) {
+  return (element.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean);
+}
+
+function normalizeClass(className) {
+  return className.replace(CXSP_SUFFIX_RE, "");
+}
+
+function mappedTarget(element, mapping) {
+  for (const className of classList(element)) {
+    const lookup = Object.hasOwn(mapping, className) ? className : normalizeClass(className);
+    if (Object.hasOwn(mapping, lookup)) {
+      return mapping[lookup];
+    }
+  }
+  return "";
+}
+
+function replaceElementTag(doc, element, tagName) {
+  const replacement = doc.createElement(tagName);
+  for (const attr of Array.from(element.attributes)) {
+    replacement.setAttribute(attr.name, attr.value);
+  }
+  while (element.firstChild) {
+    replacement.append(element.firstChild);
+  }
+  element.replaceWith(replacement);
+  return replacement;
+}
+
+function unwrapElement(element) {
+  element.replaceWith(...Array.from(element.childNodes));
+}
+
+function wrapConsecutiveListItems(doc, root) {
+  const parents = [];
+  const seen = new Set();
+  for (const li of elementsByTag(root, "li")) {
+    const parent = li.parentElement;
+    if (!parent || parent.localName === "ul" || parent.localName === "ol" || seen.has(parent)) {
+      continue;
+    }
+    seen.add(parent);
+    parents.push(parent);
+  }
+
+  for (const parent of parents) {
+    let children = Array.from(parent.children);
+    let index = 0;
+    while (index < children.length) {
+      if (children[index].localName !== "li") {
+        index += 1;
+        continue;
+      }
+
+      const firstIsOl = children[index].hasAttribute("data-deworder-ol");
+      const run = [];
+      while (
+        index < children.length &&
+        children[index].localName === "li" &&
+        children[index].hasAttribute("data-deworder-ol") === firstIsOl
+      ) {
+        run.push(children[index]);
+        index += 1;
+      }
+
+      const wrapper = doc.createElement(firstIsOl ? "ol" : "ul");
+      run[0].before(wrapper);
+      for (const li of run) {
+        li.removeAttribute("data-deworder-ol");
+        wrapper.append(li);
+      }
+
+      children = Array.from(parent.children);
+      index = children.indexOf(wrapper) + 1;
+    }
+  }
+}
+
+function shouldStripAttr(attrName) {
+  const name = attrName.toLowerCase();
+  return (
+    STRIPPED_ATTRS.has(name)
+    || name.startsWith("mso-")
+    || name.startsWith("xmlns")
+    || name.startsWith("on")
+    || name === "v:shapes"
+    || name === "o:spid"
+  );
+}
+
+function collapseNested(root, tagName) {
+  for (const element of elementsByTag(root, tagName)) {
+    let parent = element.parentElement;
+    while (parent && parent !== root) {
+      if (parent.localName === tagName) {
+        unwrapElement(element);
+        break;
+      }
+      parent = parent.parentElement;
+    }
+  }
+}
+
+function removeEmptyElements(root, tagNames) {
+  for (const element of allElements(root).reverse()) {
+    if (!tagNames.has(element.localName)) {
+      continue;
+    }
+    if ((element.textContent || "").replaceAll("\u00a0", "").trim()) {
+      continue;
+    }
+    element.remove();
+  }
+}
+
+function serializeBodyFragment(body) {
+  const pieces = [];
+  for (const child of body.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent.trim();
+      if (text) {
+        pieces.push(text);
+      }
+      continue;
+    }
+
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const rendered = child.outerHTML.trim();
+      if (rendered) {
+        pieces.push(rendered);
+      }
+    }
+  }
+  return pieces.length ? `${pieces.join("\n")}\n` : "";
+}
+
+function compareStrings(a, b) {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
+}
+
+window.Deworder = {
+  clean,
+  decodeHtmlBytes,
+  detectClasses,
+  mergeConfig,
+};
+})();
