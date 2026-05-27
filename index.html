@@ -20,40 +20,57 @@
     </ol>
 
     <section class="section" data-step="1">
-      <h2><span class="num">1</span>ladda upp HTML-fil</h2>
-      <p>Välj <code>.html</code>-fil som exporterats från Word, eller klistra in HTML-källkod.</p>
-
-      <div class="input-mode" role="tablist" aria-label="inmatningssätt">
-        <button type="button" class="secondary active" data-input-mode="file">fil</button>
-        <button type="button" class="secondary" data-input-mode="paste">klistra in</button>
-      </div>
-
-      <div data-input-panel="file">
-        <div class="drop-zone" id="drop-zone">
-          <input type="file" accept=".html,.htm,text/html" id="file-input">
-          <div class="drop-label" id="drop-label">
-            <span class="drop-icon">&#8679;</span>
-            <span>dra &amp; släpp eller <span class="drop-browse">klicka för att bläddra</span></span>
-          </div>
-        </div>
-      </div>
-
-      <div data-input-panel="paste" hidden>
-        <textarea id="paste-input" class="paste-input" spellcheck="false" placeholder="Klistra in HTML-kod här..."></textarea>
+      <div class="h2-row">
+        <h2><span class="num">1</span>Ladda upp HTML-fil</h2>
+        <p class="meta" id="upload-meta">välj en <code>.html</code>-fil som exporterats från Word eller klistra in HTML</p>
       </div>
 
       <div class="row">
+        <div class="input-mode" role="tablist" aria-label="inmatningssätt">
+          <button type="button" class="tab active" data-input-mode="file"><code>.html</code>-fil</button>
+          <button type="button" class="tab" data-input-mode="paste">klistra in</button>
+        </div>
         <button type="button" id="continue-btn" disabled>fortsätt &rarr;</button>
+      </div>
+
+      <div class="input-area">
+        <div data-input-panel="file">
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" accept=".html,.htm,text/html" id="file-input">
+            <div class="drop-label" id="drop-label">
+              <span class="drop-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+  <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" />
+</svg></span>
+              <span>dra &amp; släpp eller <span class="drop-browse">klicka för att bläddra</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div data-input-panel="paste" hidden>
+          <div class="paste-wrap">
+            <textarea id="paste-input" class="paste-input" spellcheck="false" placeholder="Klistra in HTML-kod här..."></textarea>
+            <div class="paste-overlay">
+              <span class="drop-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+  <path fill-rule="evenodd" d="M17.663 3.118c.225.015.45.032.673.05C19.876 3.298 21 4.604 21 6.109v9.642a3 3 0 0 1-3 3V16.5c0-5.922-4.576-10.775-10.384-11.217.324-1.132 1.3-2.01 2.548-2.114.224-.019.448-.036.673-.051A3 3 0 0 1 13.5 1.5H15a3 3 0 0 1 2.663 1.618ZM12 4.5A1.5 1.5 0 0 1 13.5 3H15a1.5 1.5 0 0 1 1.5 1.5H12Z" clip-rule="evenodd" />
+  <path d="M3 8.625c0-1.036.84-1.875 1.875-1.875h.375A3.75 3.75 0 0 1 9 10.5v1.875c0 1.036.84 1.875 1.875 1.875h1.875A3.75 3.75 0 0 1 16.5 18v2.625c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625v-12Z" />
+  <path d="M10.5 10.5a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963 5.23 5.23 0 0 0-3.434-1.279h-1.875a.375.375 0 0 1-.375-.375V10.5Z" />
+</svg></span>
+              <span>klistra in HTML-kod här...</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="section" data-step="2" hidden>
-      <h2><span class="num">2</span>mappa klasser till taggar</h2>
-      <p class="meta" id="mapping-meta"></p>
+      <div class="h2-row">
+        <h2><span class="num">2</span>Mappa klasser till taggar</h2>
+        <p class="meta" id="mapping-meta"></p>
+      </div>
       <div class="row">
-        <button type="button" id="preview-btn">förhandsgranska &rarr;</button>
-        <button type="button" id="new-file-btn" class="link back">ladda upp annan fil</button>
         <button type="button" id="reset-btn" class="reset">återställ standardvärden</button>
+        <button type="button" id="new-file-btn" class="link back">ladda upp annan fil</button>
+        <button type="button" id="preview-btn">förhandsgranska &rarr;</button>
       </div>
       <div id="mapping-table-root"></div>
       <label class="checkbox">
@@ -63,23 +80,35 @@
     </section>
 
     <section class="section" data-step="3" hidden>
-      <h2><span class="num">3</span>förhandsgranska &amp; ladda ned</h2>
-      <p class="meta" id="preview-meta"></p>
+      <div class="h2-row">
+        <h2><span class="num">3</span>Förhandsgranska &amp; ladda ned</h2>
+        <p class="meta" id="preview-meta"></p>
+      </div>
       <div class="row">
-        <button type="button" id="download-btn">ladda ned rensad HTML-fil</button>
+        <button type="button" id="another-file-btn" class="reset">ladda upp annan fil</button>
         <button type="button" id="adjust-btn" class="link back">justera mappning</button>
-        <button type="button" id="another-file-btn" class="link back">ladda upp annan fil</button>
+        <button type="button" id="download-btn">ladda ned rensad HTML-fil</button>
+      </div>
+    </section>
+
+    <section class="section" data-source-section hidden>
+
+      <div class="source-wrap">
+        <button type="button" class="copy-btn secondary" id="copy-btn">kopiera</button>
+        <pre class="source" id="source-pre"></pre>
       </div>
     </section>
 
     <section class="section" data-preview-section hidden>
-      <h2><span class="num">3<sup>1</sup></span>renderad jämförelse</h2>
+      <h2><span class="h2-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+  <path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd" />
+</svg></span>Renderad jämförelse</h2>
       <div class="preview">
         <div class="pane">
           <h3>före&thinsp;<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
   <path fill-rule="evenodd" d="M16.5 3.75a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-6a1.5 1.5 0 0 1-1.5-1.5V15a.75.75 0 0 0-1.5 0v3.75a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5.25a3 3 0 0 0-3-3h-6a3 3 0 0 0-3 3V9A.75.75 0 1 0 9 9V5.25a1.5 1.5 0 0 1 1.5-1.5h6Zm-5.03 4.72a.75.75 0 0 0 0 1.06l1.72 1.72H2.25a.75.75 0 0 0 0 1.5h10.94l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 0 0-1.06 0Z" clip-rule="evenodd" />
 </svg>
-</h3> 
+</h3>
           <iframe id="iframe-before" sandbox="allow-same-origin"></iframe>
         </div>
         <div class="pane">
@@ -93,16 +122,6 @@
       <div class="heading-nav">
         <button type="button" class="heading-nav-btn secondary" id="prev-heading-btn">&uarr; föregående rubrik</button>
         <button type="button" class="heading-nav-btn secondary" id="next-heading-btn">nästa rubrik &darr;</button>
-      </div>
-    </section>
-
-    <section class="section" data-source-section hidden>
-      <div class="source-header">
-        <h2><span class="num">3<sup>2</sup></span>rensad HTML</h2>
-      </div>
-      <div class="source-wrap">
-        <button type="button" class="copy-btn secondary" id="copy-btn">kopiera</button>
-        <pre class="source" id="source-pre"></pre>
       </div>
     </section>
   </main>

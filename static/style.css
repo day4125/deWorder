@@ -182,6 +182,18 @@ h2 .num {
   font-size: 0.5em;
 }
 
+.h2-icon {
+  color: var(--dim);
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.5em;
+}
+
+.h2-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
 p {
   color: var(--muted);
   font-size: 0.94rem;
@@ -203,6 +215,7 @@ button,
   font-size: 0.88rem;
   cursor: pointer;
   transition: all 150ms ease-in-out;
+  width: 225px;
 }
 
 button:hover,
@@ -215,6 +228,7 @@ button.secondary,
   background: transparent;
   color: var(--text);
   border-color: var(--border);
+  width: auto;
 }
 
 button.secondary:hover,
@@ -227,6 +241,7 @@ button.link {
   background: transparent;
   color: var(--muted);
   padding: 0.45rem 0;
+  width: auto;
 }
 
 button.link:hover {
@@ -247,8 +262,11 @@ button:disabled {
 
 .back::before { content: "← "; }
 
-.row,
-.input-mode {
+#continue-btn { margin-left: auto; }
+#reset-btn { margin-right: auto; }
+#another-file-btn { margin-right: auto; }
+
+.row {
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -256,9 +274,64 @@ button:disabled {
   margin-top: 0.75rem;
 }
 
-.input-mode .active {
-  border-color: var(--accent);
-  color: var(--accent);
+.input-mode {
+  display: flex;
+  width: fit-content;
+  gap: 0;
+  align-items: center;
+  flex-wrap: nowrap;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px;
+  position: relative;
+}
+
+.input-mode::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: var(--indicator-left, 0px);
+  width: var(--indicator-width, 0px);
+  height: calc(100% - 6px);
+  background: var(--accent);
+  border-radius: 4px;
+  transition: left 200ms ease-in-out, width 200ms ease-in-out;
+  pointer-events: none;
+}
+
+.input-mode .tab {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.35rem 0.9rem;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: color 150ms ease-in-out;
+  width: auto;
+}
+
+
+.input-mode .tab:hover {
+  color: var(--text);
+}
+
+.input-mode .tab.active {
+  color: #fff;
+}
+
+.input-mode .tab.active code {
+  color: inherit;
+}
+
+.input-mode:has(.tab.active:hover)::before {
+  filter: brightness(0.9);
 }
 
 .drop-zone {
@@ -321,6 +394,11 @@ input[type=file] {
   letter-spacing: 0.1em;
 }
 
+.paste-wrap {
+  position: relative;
+  margin-top: 0.75rem;
+}
+
 .paste-input {
   width: 100%;
   min-height: 9.85rem;
@@ -331,7 +409,6 @@ input[type=file] {
   color: var(--text);
   padding: 1rem 1rem;
   font: inherit;
-  margin-top: 0.75rem;
   display: block;
 }
 
@@ -343,22 +420,57 @@ input[type=file] {
 }
 
 .paste-input::placeholder {
+  color: transparent;
+}
+
+.paste-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   color: var(--muted);
   font-size: 0.88rem;
+  pointer-events: none;
+  text-align: center;
+}
+
+.paste-input:focus ~ .paste-overlay,
+.paste-input:not(:placeholder-shown) ~ .paste-overlay {
+  display: none;
+}
+
+.h2-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.h2-row h2 {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.h2-row .meta {
+  margin-left: auto;
 }
 
 .meta {
   color: var(--muted);
-  font-size: 0.88rem;
-  display: inline-flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  font-size: 0.82rem;
+  display: inline;
   margin: 0;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.35rem 0.75rem;
 }
+
+.meta span + span::before {
+  content: " · ";
+  color: var(--dim);
+}
+
 
 .info-icon {
   position: relative;
@@ -457,6 +569,11 @@ table.mapping th {
 
 table.mapping td.ctr,
 table.mapping th.ctr {
+  text-align: left;
+}
+
+table.mapping td.num,
+table.mapping th.num {
   text-align: right;
 }
 
@@ -493,10 +610,10 @@ table.mapping select option {
 
 button.reset {
   display: block;
-  margin-left: auto;
   background: transparent;
   color: var(--text);
   border-color: var(--border);
+  width: auto;
 }
 
 button.reset:hover {
@@ -540,7 +657,7 @@ button.reset:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
 }
 
 .source-wrap {
@@ -557,6 +674,7 @@ button.reset:hover {
 pre.source {
   background: var(--surface-2);
   color: var(--text);
+  margin: 0;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 4px;

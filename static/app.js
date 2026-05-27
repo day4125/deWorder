@@ -67,9 +67,10 @@ function resetInputState() {
   $("#file-input").value = "";
   $("#paste-input").value = "";
   $("#drop-label").innerHTML = `
-    <span class="drop-icon">&#8679;</span>
+    <span class="drop-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg></span>
     <span>dra &amp; släpp eller <span class="drop-browse">klicka för att bläddra</span></span>
   `;
+  $("#upload-meta").innerHTML = `välj en <code>.html</code>-fil som exporterats från Word eller klistra in HTML`;
   $("#mapping-meta").textContent = "";
   $("#preview-meta").textContent = "";
   $("#mapping-table-root").textContent = "";
@@ -93,7 +94,7 @@ function renderMappingTable() {
   table.className = "mapping";
   table.innerHTML = `
     <thead>
-      <tr><th>klass</th><th>original-tagg</th><th class="num">antal</th><th class="ctr">mål<span class="info-icon" tabindex="0" aria-label="hjälp om mål"><span class="info-glyph" aria-hidden="true"></span><span class="info-tooltip" role="tooltip">Välj en måltagg för varje klass. <strong>strip</strong> tar bort elementet helt, <strong>keep</strong> lämnar det oförändrat.</span></span></th></tr>
+      <tr><th>klass</th><th class="ctr">mål<span class="info-icon" tabindex="0" aria-label="hjälp om mål"><span class="info-glyph" aria-hidden="true"></span><span class="info-tooltip" role="tooltip">Välj en måltagg för varje klass. <strong>strip</strong> tar bort elementet helt, <strong>keep</strong> lämnar det oförändrat.</span></span></th><th>original-tagg</th><th class="num">antal</th></tr>
     </thead>
     <tbody></tbody>
   `;
@@ -104,9 +105,9 @@ function renderMappingTable() {
     const selected = config.mapping[row.class_name] || DEFAULT_MAPPING[row.class_name] || "keep";
     tr.innerHTML = `
       <td class="cls"><code>.${escapeHtml(row.class_name)}</code></td>
+      <td class="ctr"></td>
       <td><code>&lt;${escapeHtml(row.tag_name)}&gt;</code></td>
       <td class="num">${row.count}</td>
-      <td class="ctr"></td>
     `;
     const select = document.createElement("select");
     select.name = `map__${row.class_name}`;
@@ -218,6 +219,14 @@ function flashButtonLabel(button, label) {
   }, 1600);
 }
 
+function updateTabIndicator(activeBtn) {
+  const container = activeBtn.closest(".input-mode");
+  const cRect = container.getBoundingClientRect();
+  const bRect = activeBtn.getBoundingClientRect();
+  container.style.setProperty("--indicator-left", (bRect.left - cRect.left) + "px");
+  container.style.setProperty("--indicator-width", bRect.width + "px");
+}
+
 function bindInputMode() {
   document.querySelectorAll("[data-input-mode]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -226,9 +235,12 @@ function bindInputMode() {
       document.querySelectorAll("[data-input-panel]").forEach((panel) => {
         panel.hidden = panel.dataset.inputPanel !== state.inputMode;
       });
+      updateTabIndicator(button);
       updateContinueState();
     });
   });
+  const initial = document.querySelector("[data-input-mode].active");
+  if (initial) updateTabIndicator(initial);
 }
 
 function updateContinueState() {
@@ -246,7 +258,9 @@ function bindUploadUi() {
   input.addEventListener("change", () => {
     state.droppedFile = null;
     if (input.files.length) {
-      label.innerHTML = `<span class="drop-icon">&#10003;</span><span>${escapeHtml(input.files[0].name)}</span>`;
+      const name = input.files[0].name;
+      label.innerHTML = `<span class="drop-icon">&#10003;</span><span>${escapeHtml(name)}</span>`;
+      $("#upload-meta").innerHTML = `källa: <code>${escapeHtml(name)}</code>`;
     }
     updateContinueState();
   });
@@ -276,6 +290,7 @@ function bindUploadUi() {
       state.droppedFile = file;
       input.value = "";
       label.innerHTML = `<span class="drop-icon">&#10003;</span><span>${escapeHtml(file.name)}</span>`;
+      $("#upload-meta").innerHTML = `källa: <code>${escapeHtml(file.name)}</code>`;
       updateContinueState();
     }
   }, true);
@@ -307,7 +322,7 @@ async function continueToMapping() {
       state.raw = $("#paste-input").value;
     }
     state.rows = detectClasses(state.raw);
-    $("#mapping-meta").innerHTML = `<span>fil: <code>${escapeHtml(state.filename)}</code></span><span>${state.rows.length} klasser hittade</span>`;
+    $("#mapping-meta").innerHTML = `<span>${state.rows.length} klasser hittade</span><span>källa: <code>${escapeHtml(state.filename)}</code></span>`;
     renderMappingTable();
     setStep(2);
   } catch (error) {
@@ -328,7 +343,7 @@ function previewCleaned() {
       .filter(([, target]) => /^h[1-6]$/.test(target))
       .map(([name]) => name);
     state.headingIndex = -1;
-    $("#preview-meta").innerHTML = `<span>fil: <code>${escapeHtml(state.filename)}</code></span><span>${state.raw.length} &rarr; ${state.cleaned.length} tecken</span>`;
+    $("#preview-meta").innerHTML = `<span>${state.raw.length} &rarr; ${state.cleaned.length} tecken</span><span>källa: <code>${escapeHtml(state.filename)}</code></span>`;
     const after = $("#iframe-after");
     after.addEventListener("load", updateHeadingNavState, { once: true });
     const before = $("#iframe-before");
