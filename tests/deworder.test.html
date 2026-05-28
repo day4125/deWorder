@@ -239,6 +239,25 @@
       assertEqual(clean(`<p class="NoKRubrik2 NoKText">text</p>`), "<h2>text</h2>\n");
     });
 
+    test("clean table_mode=flatten extracts cell content as paragraphs", () => {
+      const input = `<table><tr><td><p class="NoKText">A</p></td><td><p class="NoKText">B</p></td></tr></table>`;
+      assertEqual(
+        clean(input, { table_mode: "flatten" }),
+        "<p>A</p>\n<p>B</p>\n",
+      );
+    });
+
+    test("clean table_mode=keep preserves table structure and strips colgroup/col/caption", () => {
+      const input = `<table><colgroup><col></colgroup><caption>Title</caption><tr><td><p class="NoKText">Cell</p></td></tr></table>`;
+      const cleaned = clean(input, { table_mode: "keep" });
+      assertIncludes(cleaned, "<table>");
+      assertIncludes(cleaned, "<td>");
+      assertIncludes(cleaned, "<p>Cell</p>");
+      assertNotIncludes(cleaned, "<colgroup>");
+      assertNotIncludes(cleaned, "<col>");
+      assertNotIncludes(cleaned, "<caption>");
+    });
+
     run();
 
     function test(name, fn) {

@@ -10,8 +10,9 @@ download cleaned HTML. All processing happens in the browser.
 
 ```text
 index.html              # static app shell
+static/elements.html    # visual sampler for shared UI elements
 static/style.css        # browser UI styles
-static/defaults.js      # default mappings, allowed targets, storage keys
+static/defaults.js      # fallback config, allowed targets, pipeline constants
 static/deworder.js      # decode, class detection, and cleanup API
 static/app.js           # upload/paste, mapping, preview, copy, download UI
 tests/fixtures/         # stable parity fixtures and expected output

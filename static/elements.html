@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>html-deworder elements</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ---- dark mode prototype (scoped to this page) ---- */
+    .elements-page.dark {
+      color-scheme: dark;
+      --bg: #14161a;
+      --surface: #1d2026;
+      --surface-2: #262a31;
+      --border: #353a44;
+      --text: #e8e6df;
+      --muted: #9aa0aa;
+      --accent: #5fb389;
+      --accent-soft: color-mix(in srgb, #5fb389 18%, transparent);
+      --dim: #555b66;
+    }
+    .elements-page.dark .drop-zone,
+    .elements-page.dark .paste-input,
+    .elements-page.dark .table-card,
+    .elements-page.dark .collapse-toggle,
+    .elements-page.dark .elements-swatch,
+    .elements-page.dark .elements-sample {
+      box-shadow: 0 1px 4px rgba(0,0,0,.5);
+    }
+    .elements-page.dark .table-card .fade {
+      background: linear-gradient(to bottom, rgba(29,32,38,0), var(--surface) 75%);
+    }
+    .elements-page.dark table.mapping select,
+    .elements-page.dark #table-mode {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%239aa0aa' stroke-width='1.4' fill='none' stroke-linecap='round'/></svg>");
+    }
+    .elements-page.dark pre.source .tok-tag  { color: #e57a9e; }
+    .elements-page.dark pre.source .tok-attr { color: #6fcfcf; }
+    .elements-page.dark pre.source .tok-val  { color: #e0b46a; }
+
+    /* ---- toggle button ---- */
+    .theme-toggle {
+      position: fixed;
+      top: 0.9rem;
+      right: 1rem;
+      z-index: 50;
+      width: auto;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .theme-toggle:hover { background: var(--surface-2); filter: none; }
+    .theme-toggle .glyph { font-size: 0.95rem; line-height: 1; }
+
+    .elements-page main { padding-top: 1rem; }
+    .elements-page .section { margin-bottom: 1.75rem; }
+    .elements-page .section h3 {
+      margin: 1rem 0 0.35rem;
+      color: var(--text);
+      font-size: 0.94rem;
+      font-weight: 600;
+      text-align: left;
+    }
+    .elements-page .section > p { max-width: 70ch; }
+    .elements-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .elements-swatch,
+    .elements-sample {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.9rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .elements-swatch::before {
+      content: "";
+      display: block;
+      height: 3rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 0.65rem;
+      background: var(--swatch);
+    }
+    .elements-swatch strong,
+    .elements-sample strong { display: block; font-size: 0.84rem; }
+    .elements-swatch code,
+    .elements-sample code { color: var(--muted); font-size: 0.78rem; }
+    .elements-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+    .elements-stack button,
+    .elements-stack .button { width: auto; }
+    .elements-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    .elements-preview {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-height: 13rem;
+      padding: 1rem;
+    }
+    .elements-preview h1,
+    .elements-preview h2,
+    .elements-preview p { margin-top: 0; }
+    .elements-preview blockquote {
+      margin: 0.75rem 0;
+      padding-left: 1rem;
+      border-left: 3px solid var(--accent);
+      color: var(--muted);
+    }
+    .elements-preview ul,
+    .elements-preview ol { color: var(--muted); }
+    .elements-page .input-mode { --indicator-left: 3px; --indicator-width: 7.9rem; }
+    @media (max-width: 720px) { .elements-two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="elements-page">
+  <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" aria-label="toggle dark mode">
+    <span class="glyph" aria-hidden="true">&#9789;</span><span class="theme-label">dark</span>
+  </button>
+  <header class="site-header">
+    <h1><a href="../index.html">html-deworder</a><span class="cursor"></span></h1>
+    <p class="tagline">Element sampler for buttons, surfaces, text, and forms</p>
+  </header>
+
+  <main>
+    <ol class="steps" aria-label="steps">
+      <li class="done"><span class="dot"></span>upload</li>
+      <li class="active"><span class="dot"></span>map</li>
+      <li><span class="dot"></span>preview</li>
+    </ol>
+
+    <section class="section">
+      <div class="h2-row">
+        <h2><span class="num">01</span>Typography</h2>
+        <p class="meta"><span>headings</span><span>body text</span><span>code</span></p>
+      </div>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer <code>NoKText</code> neque vitae ipsum facilisis, and this line shows how ordinary helper copy feels in the interface.</p>
+      <div class="elements-two">
+        <div class="elements-preview">
+          <h1>Heading level one</h1>
+          <h2>Heading level two</h2>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec consequat, nibh sed finibus tincidunt, lorem nisl pretium justo, nec facilisis elit sem in arcu.</p>
+          <blockquote>Praesent commodo cursus magna, vel scelerisque nisl consectetur et.</blockquote>
+          <ul>
+            <li>First list item with a little longer sample text</li>
+            <li>Second item with <strong>strong</strong> and <em>emphasis</em></li>
+          </ul>
+        </div>
+        <pre class="source"><span class="tok-punc">&lt;</span><span class="tok-tag">h1</span><span class="tok-punc">&gt;</span>Heading level one<span class="tok-punc">&lt;/</span><span class="tok-tag">h1</span><span class="tok-punc">&gt;</span>
+<span class="tok-punc">&lt;</span><span class="tok-tag">p</span> <span class="tok-attr">class</span><span class="tok-punc">=</span><span class="tok-val">"NoKText"</span><span class="tok-punc">&gt;</span>Lorem ipsum<span class="tok-punc">&lt;/</span><span class="tok-tag">p</span><span class="tok-punc">&gt;</span></pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="h2-row">
+        <h2><span class="num">02</span>Colors and surfaces</h2>
+        <p class="meta">tokens from <code>style.css</code></p>
+      </div>
+      <div class="elements-grid">
+        <div class="elements-swatch" style="--swatch: var(--bg)"><strong>Background</strong><code>--bg</code></div>
+        <div class="elements-swatch" style="--swatch: var(--surface)"><strong>Surface</strong><code>--surface</code></div>
+        <div class="elements-swatch" style="--swatch: var(--surface-2)"><strong>Surface 2</strong><code>--surface-2</code></div>
+        <div class="elements-swatch" style="--swatch: var(--accent)"><strong>Accent</strong><code>--accent</code></div>
+        <div class="elements-swatch" style="--swatch: var(--accent-soft)"><strong>Accent soft</strong><code>--accent-soft</code></div>
+        <div class="elements-swatch" style="--swatch: var(--dim)"><strong>Dim</strong><code>--dim</code></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="h2-row">
+        <h2><span class="num">03</span>Buttons</h2>
+        <p class="meta"><span>primary</span><span>secondary</span><span>link</span><span>disabled</span></p>
+      </div>
+      <div class="elements-stack">
+        <button type="button">preview &rarr;</button>
+        <button type="button" class="secondary">choose config</button>
+        <button type="button" class="reset">reset defaults</button>
+        <button type="button" class="link back">adjust mapping</button>
+        <button type="button" disabled>continue &rarr;</button>
+      </div>
+      <div class="row">
+        <div class="input-mode" role="tablist" aria-label="input mode">
+          <button type="button" class="tab active"><code>.html</code> file</button>
+          <button type="button" class="tab">paste</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="h2-row">
+        <h2><span class="num">04</span>Forms</h2>
+        <p class="meta">drop zone, textarea, checkbox, and select</p>
+      </div>
+      <div class="drop-zone has-file">
+        <div class="drop-label">
+          <span class="drop-icon">&#10003;</span>
+          <span>article-lorem.html selected</span>
+        </div>
+      </div>
+      <div class="paste-wrap">
+        <textarea class="paste-input" spellcheck="false" placeholder="Paste HTML here...">&lt;p class="NoKText"&gt;Lorem ipsum dolor sit amet.&lt;/p&gt;</textarea>
+      </div>
+      <div class="row">
+        <label class="checkbox"><input type="checkbox" checked>strip remaining class attributes from output</label>
+        <label class="checkbox">tables:<select id="table-mode"><option>keep as tables</option><option>flatten to paragraphs</option></select></label>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="h2-row">
+        <h2><span class="num">05</span>Tables and panels</h2>
+        <p class="meta">mapping table and tooltip</p>
+      </div>
+      <div class="table-card collapsed">
+        <div class="table-scroll">
+          <table class="mapping">
+            <thead>
+              <tr><th>class</th><th class="ctr">target<span class="info-icon" tabindex="0" aria-label="target help"><span class="info-glyph" aria-hidden="true"></span><span class="info-tooltip" role="tooltip">Choose a target tag for each class. <strong>strip</strong> removes the element,<br><strong>keep</strong> leaves it unchanged.</span></span></th><th>source tag</th><th class="num">count</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="cls"><code>.NoKRubrik1</code></td><td class="ctr"><select><option>h1</option><option>h2</option><option>p</option></select></td><td>p</td><td class="num">1</td></tr>
+              <tr><td class="cls"><code>.NoKRubrik2</code></td><td class="ctr"><select><option>h2</option><option>h3</option><option>p</option></select></td><td>p</td><td class="num">7</td></tr>
+              <tr><td class="cls"><code>.NoKText</code></td><td class="ctr"><select><option>p</option><option>keep</option><option>strip</option></select></td><td>p</td><td class="num">84</td></tr>
+              <tr><td class="cls"><code>.NoKPunktlista</code></td><td class="ctr"><select><option>ul</option><option>ol</option><option>p</option></select></td><td>p</td><td class="num">19</td></tr>
+              <tr><td class="cls"><code>.MsoCommentText</code></td><td class="ctr"><select><option>strip</option><option>keep</option></select></td><td>p</td><td class="num">4</td></tr>
+              <tr><td class="cls"><code>.NoKCitat</code></td><td class="ctr"><select><option>blockquote</option><option>p</option></select></td><td>p</td><td class="num">2</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fade"></div>
+        <button type="button" class="collapse-toggle" aria-expanded="false"><span class="label">show all</span><span class="row-count">(5/6)</span><svg class="chev" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="h2-row">
+        <h2><span class="num">06</span>Preview</h2>
+        <p class="meta">rendered comparison</p>
+      </div>
+      <div class="preview">
+        <div class="pane"><h3>before</h3><div class="elements-preview"><p><span style="font-family: Calibri, sans-serif;">Lorem ipsum</span> with Word-like inline clutter.</p><p class="MsoNormal">Vestibulum id ligula porta felis euismod semper.</p></div></div>
+        <div class="pane"><h3>after</h3><div class="elements-preview"><p>Lorem ipsum with cleaner semantics.</p><p>Vestibulum id ligula porta felis euismod semper.</p></div></div>
+      </div>
+      <div class="heading-nav">
+        <button type="button" class="heading-nav-btn secondary">&uarr; previous heading</button>
+        <button type="button" class="heading-nav-btn secondary">next heading &darr;</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    (function () {
+      var body = document.body;
+      var btn = document.getElementById('theme-toggle');
+      var label = btn.querySelector('.theme-label');
+      var glyph = btn.querySelector('.glyph');
+      var stored = localStorage.getItem('elements-theme');
+      if (stored === 'dark') setDark(true);
+
+      btn.addEventListener('click', function () {
+        setDark(!body.classList.contains('dark'));
+      });
+
+      function setDark(on) {
+        body.classList.toggle('dark', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        label.textContent = on ? 'light' : 'dark';
+        glyph.innerHTML = on ? '&#9728;' : '&#9789;';
+        localStorage.setItem('elements-theme', on ? 'dark' : 'light');
+      }
+    })();
+  </script>
+</body>
+</html>

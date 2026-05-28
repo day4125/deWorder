@@ -1,8 +1,7 @@
 (() => {
 const {
   AUTO_STRIP_CLASSES,
-  DEFAULT_MAPPING,
-  DISALLOWED_TAGS,
+  FALLBACK_CONFIG,
   STRIPPED_ATTRS,
 } = window.DeworderDefaults;
 
@@ -79,8 +78,9 @@ function clean(htmlString, config = {}) {
     }
   }
 
+  const disallowedTags = new Set(cfg.disallowed_tags);
   for (const element of allElements(body)) {
-    if (DISALLOWED_TAGS.has(element.localName)) {
+    if (disallowedTags.has(element.localName)) {
       element.remove();
     }
   }
@@ -123,6 +123,8 @@ function clean(htmlString, config = {}) {
   for (const div of elementsByTag(body, "div")) {
     unwrapElement(div);
   }
+
+  handleTables(body, cfg.table_mode, doc);
 
   wrapConsecutiveListItems(doc, body);
 
@@ -180,10 +182,12 @@ function clean(htmlString, config = {}) {
 function mergeConfig(config = {}) {
   return {
     mapping: {
-      ...DEFAULT_MAPPING,
+      ...FALLBACK_CONFIG.mapping,
       ...(config.mapping || {}),
     },
     strip_all_classes: config.strip_all_classes !== false,
+    table_mode: config.table_mode || FALLBACK_CONFIG.table_mode,
+    disallowed_tags: config.disallowed_tags || FALLBACK_CONFIG.disallowed_tags,
   };
 }
 
@@ -296,6 +300,28 @@ function wrapConsecutiveListItems(doc, root) {
 
       children = Array.from(parent.children);
       index = children.indexOf(wrapper) + 1;
+    }
+  }
+}
+
+function handleTables(body, tableMode, doc) {
+  const CELL_BLOCK_RE = /^(p|div|h[1-6]|blockquote|ul|ol|li)$/i;
+  for (const table of [...body.querySelectorAll("table")]) {
+    if (tableMode === "flatten") {
+      const fragment = doc.createDocumentFragment();
+      for (const cell of table.querySelectorAll("td, th")) {
+        const blocks = [...cell.children].filter(el => CELL_BLOCK_RE.test(el.tagName));
+        if (blocks.length) {
+          blocks.forEach(b => fragment.appendChild(b));
+        } else if (cell.textContent.trim()) {
+          const p = doc.createElement("p");
+          [...cell.childNodes].forEach(n => p.appendChild(n));
+          fragment.appendChild(p);
+        }
+      }
+      table.replaceWith(fragment);
+    } else {
+      table.querySelectorAll("colgroup, col, caption").forEach(el => el.remove());
     }
   }
 }

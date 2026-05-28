@@ -1,6 +1,8 @@
 (() => {
-const { ALLOWED_TARGETS, DEFAULT_MAPPING, STORAGE_KEYS } = window.DeworderDefaults;
+const { ALLOWED_TARGETS, FALLBACK_CONFIG } = window.DeworderDefaults;
 const { clean, decodeHtmlBytes, detectClasses, mergeConfig } = window.Deworder;
+
+const COLLAPSED_ROW_COUNT = 5;
 
 const state = {
   filename: "input.html",
@@ -11,6 +13,7 @@ const state = {
   droppedFile: null,
   headingIndex: -1,
   beforeHeadingClasses: [],
+  config: mergeConfig(FALLBACK_CONFIG),
 };
 
 function $(selector) {
@@ -31,27 +34,18 @@ function setStep(step) {
   $("[data-source-section]").hidden = !previewVisible;
 }
 
-function loadStoredConfig() {
-  let mapping = {};
+async function loadConfig() {
   try {
-    mapping = JSON.parse(localStorage.getItem(STORAGE_KEYS.mapping) || "{}");
+    const response = await fetch("config.json");
+    if (response.ok) {
+      const json = await response.json();
+      state.config = mergeConfig(json);
+      return;
+    }
   } catch {
-    mapping = {};
+    // file:// mode or missing file — fall through to fallback
   }
-  return mergeConfig({
-    mapping,
-    strip_all_classes: localStorage.getItem(STORAGE_KEYS.stripAllClasses) !== "false",
-  });
-}
-
-function saveStoredConfig(config) {
-  localStorage.setItem(STORAGE_KEYS.mapping, JSON.stringify(config.mapping || {}));
-  localStorage.setItem(STORAGE_KEYS.stripAllClasses, String(config.strip_all_classes !== false));
-}
-
-function resetStoredConfig() {
-  localStorage.removeItem(STORAGE_KEYS.mapping);
-  localStorage.removeItem(STORAGE_KEYS.stripAllClasses);
+  state.config = mergeConfig(FALLBACK_CONFIG);
 }
 
 function resetInputState() {
@@ -82,11 +76,12 @@ function resetInputState() {
 
 function renderMappingTable() {
   const root = $("#mapping-table-root");
-  const config = loadStoredConfig();
+  const config = state.config;
   const rows = state.rows;
 
   if (!rows.length) {
     root.innerHTML = "<p>Inga klasser hittades.</p>";
+    updateCollapseToggle();
     return;
   }
 
@@ -94,7 +89,7 @@ function renderMappingTable() {
   table.className = "mapping";
   table.innerHTML = `
     <thead>
-      <tr><th>klass</th><th class="ctr">mål<span class="info-icon" tabindex="0" aria-label="hjälp om mål"><span class="info-glyph" aria-hidden="true"></span><span class="info-tooltip" role="tooltip">Välj en måltagg för varje klass. <strong>strip</strong> tar bort elementet helt, <strong>keep</strong> lämnar det oförändrat.</span></span></th><th>original-tagg</th><th class="num">antal</th></tr>
+      <tr><th>klass</th><th class="ctr">mål<span class="info-icon" tabindex="0" aria-label="hjälp om mål"><span class="info-glyph" aria-hidden="true"></span><span class="info-tooltip" role="tooltip">Välj en måltagg för varje klass. <strong>strip</strong> tar bort elementet helt,<br><strong>keep</strong> lämnar det oförändrat.</span></span></th><th>original-tagg</th><th class="num">antal</th></tr>
     </thead>
     <tbody></tbody>
   `;
@@ -102,7 +97,7 @@ function renderMappingTable() {
   const tbody = table.querySelector("tbody");
   for (const row of rows) {
     const tr = document.createElement("tr");
-    const selected = config.mapping[row.class_name] || DEFAULT_MAPPING[row.class_name] || "keep";
+    const selected = config.mapping[row.class_name] || "keep";
     tr.innerHTML = `
       <td class="cls"><code>.${escapeHtml(row.class_name)}</code></td>
       <td class="ctr"></td>
@@ -123,7 +118,44 @@ function renderMappingTable() {
   }
 
   root.replaceChildren(table);
-  $("#strip-all-classes").checked = config.strip_all_classes;
+  $("#strip-all-classes").checked = config.strip_all_classes !== false;
+  $("#table-mode").value = config.table_mode || "keep";
+  updateCollapseToggle();
+}
+
+function updateCollapseToggle() {
+  const card = $("#mapping-table-card");
+  const toggle = $("#mapping-toggle");
+  if (!card || !toggle) return;
+  const total = state.rows.length;
+  const collapsible = total > COLLAPSED_ROW_COUNT;
+  toggle.hidden = !collapsible;
+  card.querySelector(".fade").hidden = !collapsible;
+  if (!collapsible) {
+    card.classList.remove("collapsed");
+    card.classList.remove("expanded");
+    return;
+  }
+  card.classList.add("collapsed");
+  card.classList.remove("expanded");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.querySelector(".label").textContent = "visa alla";
+  $("#mapping-shown").textContent = String(COLLAPSED_ROW_COUNT);
+  $("#mapping-total").textContent = String(total);
+}
+
+function bindCollapseToggle() {
+  const card = $("#mapping-table-card");
+  const toggle = $("#mapping-toggle");
+  if (!card || !toggle) return;
+  toggle.addEventListener("click", () => {
+    const isCollapsed = card.classList.contains("collapsed");
+    card.classList.toggle("collapsed", !isCollapsed);
+    card.classList.toggle("expanded", isCollapsed);
+    toggle.setAttribute("aria-expanded", String(isCollapsed));
+    toggle.querySelector(".label").textContent = isCollapsed ? "visa färre" : "visa alla";
+    $("#mapping-shown").textContent = String(isCollapsed ? state.rows.length : COLLAPSED_ROW_COUNT);
+  });
 }
 
 function collectMappingConfig() {
@@ -135,6 +167,8 @@ function collectMappingConfig() {
   return {
     mapping,
     strip_all_classes: $("#strip-all-classes").checked,
+    table_mode: $("#table-mode").value,
+    disallowed_tags: state.config.disallowed_tags,
   };
 }
 
@@ -337,7 +371,6 @@ function isHtmlFile(file) {
 function previewCleaned() {
   try {
     const config = collectMappingConfig();
-    saveStoredConfig(config);
     state.cleaned = clean(state.raw, config);
     state.beforeHeadingClasses = Object.entries(config.mapping || {})
       .filter(([, target]) => /^h[1-6]$/.test(target))
@@ -362,7 +395,7 @@ function tintIframe(iframe) {
   const doc = iframe.contentDocument;
   if (!doc) return;
   const style = doc.createElement("style");
-  style.textContent = "html,body{background:#f7f7f4;scrollbar-width:thin;scrollbar-color:#b6bac1 #f7f7f4;}";
+  style.textContent = "html,body{background:#f7f7f4;scrollbar-width:thin;scrollbar-color:#b6bac1 ##ffffff;}";
   (doc.head || doc.documentElement).append(style);
 }
 
@@ -407,13 +440,53 @@ function stepHeading(delta) {
   scrollIframeToHeading(beforeIframe, before, next);
 }
 
+async function loadConfigFromFile(file) {
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    state.config = mergeConfig(json);
+    if (state.rows.length) {
+      renderMappingTable();
+    }
+    flashButtonLabel($("#load-config-btn"), "laddad");
+  } catch {
+    alert("Kunde inte läsa config-filen. Kontrollera att det är giltig JSON.");
+  }
+}
+
+function downloadConfig() {
+  const uiPartial = collectMappingConfig();
+  const configToSave = {
+    mapping: { ...state.config.mapping, ...uiPartial.mapping },
+    strip_all_classes: uiPartial.strip_all_classes,
+    table_mode: uiPartial.table_mode,
+    disallowed_tags: uiPartial.disallowed_tags,
+  };
+  const blob = new Blob([JSON.stringify(configToSave, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "config.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  flashButtonLabel($("#download-config-btn"), "nedladdad");
+}
+
 function bindActions() {
   $("#continue-btn").addEventListener("click", continueToMapping);
   $("#preview-btn").addEventListener("click", previewCleaned);
   $("#reset-btn").addEventListener("click", () => {
-    resetStoredConfig();
     renderMappingTable();
   });
+  $("#load-config-btn").addEventListener("click", () => {
+    $("#config-input").click();
+  });
+  $("#config-input").addEventListener("change", () => {
+    const file = $("#config-input").files[0];
+    if (file) loadConfigFromFile(file);
+    $("#config-input").value = "";
+  });
+  $("#download-config-btn").addEventListener("click", downloadConfig);
   $("#new-file-btn").addEventListener("click", () => {
     resetInputState();
     setStep(1);
@@ -452,9 +525,15 @@ function bindActions() {
   });
 }
 
-bindInputMode();
-bindUploadUi();
-bindActions();
-setStep(1);
-updateHeadingNavState();
+async function init() {
+  await loadConfig();
+  bindInputMode();
+  bindUploadUi();
+  bindActions();
+  bindCollapseToggle();
+  setStep(1);
+  updateHeadingNavState();
+}
+
+init();
 })();
