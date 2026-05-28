@@ -26,3 +26,7 @@ ehthumbs.db
 # Python local server artefacts
 __pycache__/
 *.pyc
+
+static/ui-explorations.svg
+static/word-logo.jpg
+ui-explorations.html
