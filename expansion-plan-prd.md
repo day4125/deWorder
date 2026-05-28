@@ -173,8 +173,7 @@ as one PR with no behavior change, before the migration in §7.
      every tool wants (`body` font, base `button`, `.section`, `.steps`,
      `.row`, `.h2-row`, `.copy-btn`, `.secondary`, `.link`).
    - `tools/deworder/style.css` — deworder-only rules (`table.mapping`,
-     `pre.source` tokenizer colors, `.drop-zone`, `.paste-wrap`,
-     `.word-mascot`, etc.).
+     `pre.source` tokenizer colors, `.drop-zone`, `.paste-wrap`, etc.).
 
 2. **Flip relative paths.** `index.html` and the tests reference
    `static/...` assuming the deworder lives at the root. Once it moves
@@ -263,8 +262,9 @@ own PR with a smoke test that previously saved preferences still load.
 
 - **Naming**: "html-deworder" is a tool name; the *site* needs a name.
   Options: keep the directory but show "verktygslåda" / "toolbox" on the
-  landing page; or rebrand to something like `verktyg.se`-ish. Decide
-  before the landing page ships.
+  landing page; or rebrand to something like `verktyg.se`-ish. Current
+  working suggestion for the umbrella site: **fågelvägen**. Decide before
+  the landing page ships.
 - **Repo rename**: if the site name changes, decide whether to rename
   the GitHub repo or keep `js-deworder` as the historical slug.
 - **Scope creep per tool**: text-tool category invites endless small
